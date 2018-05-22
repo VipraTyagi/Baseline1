@@ -29,14 +29,16 @@ class DAVIS2016(Dataset):
         self.seq_name = seq_name
 
         if self.train:
-            fname = 'train_seqs'
+            fname = 'train'
         else:
-            fname = 'val_seqs'
+            fname = 'val'
 
         if self.seq_name is None:
 
+            self.seq_positions = [0]
+
             # Initialize the original DAVIS splits for training the parent network
-            with open(os.path.join(db_root_dir, fname + '.txt')) as f:
+            with open(os.path.join(db_root_dir + '/ImageSets/2017/', fname + '.txt')) as f:
                 seqs = f.readlines()
                 img_list = []
                 labels = []
@@ -44,6 +46,7 @@ class DAVIS2016(Dataset):
                     images = np.sort(os.listdir(os.path.join(db_root_dir, 'JPEGImages/480p/', seq.strip())))
                     images_path = list(map(lambda x: os.path.join('JPEGImages/480p/', seq.strip(), x), images))
                     img_list.extend(images_path)
+                    self.seq_positions.append(self.seq_positions[-1] + len(images_path))
                     lab = np.sort(os.listdir(os.path.join(db_root_dir, 'Annotations/480p/', seq.strip())))
                     lab_path = list(map(lambda x: os.path.join('Annotations/480p/', seq.strip(), x), lab))
                     labels.extend(lab_path)
@@ -81,12 +84,19 @@ class DAVIS2016(Dataset):
         if self.transform is not None:
             sample = self.transform(sample)
 
+        if self.seq_name is None:
+            seq_id = np.searchsorted(self.seq_positions, idx, side='right') - 1
+            sample['first_frame'] = (idx == self.seq_positions[seq_id])
+        else:
+            sample['first_frame'] = (idx == 0)
+
         return sample
 
     def make_img_gt_pair(self, idx):
         """
         Make the image-ground-truth pair
         """
+
         img = cv2.imread(os.path.join(self.db_root_dir, self.img_list[idx]))
         if self.labels[idx] is not None:
             label = cv2.imread(os.path.join(self.db_root_dir, self.labels[idx]), 0)
