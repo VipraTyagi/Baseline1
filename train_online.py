@@ -31,6 +31,8 @@ else:
 
 db_root_dir = Path.db_root_dir()
 save_dir = Path.save_root_dir()
+db_root_dir = '../../../data/azhevnerchuk/DAVIS-17'
+
 
 if not os.path.exists(save_dir):
     os.makedirs(os.path.join(save_dir))
@@ -38,9 +40,10 @@ if not os.path.exists(save_dir):
 vis_net = 0  # Visualize the network?
 vis_res = 0  # Visualize the results?
 nAveGrad = 5  # Average the gradient every nAveGrad iterations
-nEpochs = 2000 * nAveGrad  # Number of epochs for training
+nEpochs = 200 * nAveGrad  # Number of epochs for training
 snapshot = nEpochs  # Store a model every snapshot epochs
 parentEpoch = 240
+num_imgs = 2
 
 # Parameters in p are used for the name of the model
 p = {
@@ -50,13 +53,18 @@ seed = 0
 
 parentModelName = 'parent'
 # Select which GPU, -1 if CPU
-gpu_id = 0
+gpu_id = 4
 device = torch.device("cuda:"+str(gpu_id) if torch.cuda.is_available() else "cpu")
+print(device)
 
 # Network definition
 net = vo.OSVOS(pretrained=0)
-net.load_state_dict(torch.load(os.path.join(save_dir, parentModelName+'_epoch-'+str(parentEpoch-1)+'.pth'),
+# net.load_state_dict(torch.load(os.path.join(save_dir, parentModelName+'_epoch-'+str(parentEpoch-1)+'.pth'),
+#                                map_location=lambda storage, loc: storage))
+net.load_state_dict(torch.load(parentModelName+'_epoch-'+str(parentEpoch-1)+'.pth',
                                map_location=lambda storage, loc: storage))
+# net.load_state_dict(parentModelName+'_epoch-'+str(parentEpoch-1)+'.pth')
+
 
 # Logging into Tensorboard
 log_dir = os.path.join(save_dir, 'runs', datetime.now().strftime('%b%d_%H-%M-%S') + '_' + socket.gethostname()+'-'+seq_name)
@@ -93,7 +101,7 @@ composed_transforms = transforms.Compose([tr.RandomHorizontalFlip(),
                                           tr.ScaleNRotate(rots=(-30, 30), scales=(.75, 1.25)),
                                           tr.ToTensor()])
 # Training dataset and its iterator
-db_train = db.DAVIS2016(train=True, db_root_dir=db_root_dir, transform=composed_transforms, seq_name=seq_name)
+db_train = db.DAVIS2016(train=True, db_root_dir=db_root_dir, transform=composed_transforms, seq_name=seq_name, num_imgs=num_imgs)
 trainloader = DataLoader(db_train, batch_size=p['trainBatch'], shuffle=True, num_workers=1)
 
 # Testing dataset and its iterator
@@ -128,7 +136,7 @@ for epoch in range(0, nEpochs):
         running_loss_tr += loss.item()  # PyTorch 0.4.0 style
 
         # Print stuff
-        if epoch % (nEpochs//20) == (nEpochs//20 - 1):
+        if (epoch % (nEpochs//20) == (nEpochs//20 - 1)) and (ii == 0):
             running_loss_tr /= num_img_tr
             loss_tr.append(running_loss_tr)
 

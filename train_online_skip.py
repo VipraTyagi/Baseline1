@@ -43,6 +43,7 @@ nAveGrad = 5  # Average the gradient every nAveGrad iterations
 nEpochs = 200 * nAveGrad  # Number of epochs for training
 snapshot = nEpochs  # Store a model every snapshot epochs
 parentEpoch = 240
+num_imgs = 2
 
 # Parameters in p are used for the name of the model
 p = {
@@ -100,8 +101,8 @@ composed_transforms = transforms.Compose([tr.RandomHorizontalFlip(),
                                           tr.ScaleNRotate(rots=(-30, 30), scales=(.75, 1.25)),
                                           tr.ToTensor()])
 # Training dataset and its iterator
-db_train = db.DAVIS2016(train=True, db_root_dir=db_root_dir, transform=composed_transforms, seq_name=seq_name)
-trainloader = DataLoader(db_train, batch_size=p['trainBatch'], shuffle=True, num_workers=1)
+db_train = db.DAVIS2016(train=True, db_root_dir=db_root_dir, transform=composed_transforms, seq_name=seq_name, num_imgs=num_imgs)
+trainloader = DataLoader(db_train, batch_size=p['trainBatch'], shuffle=False, num_workers=1)
 
 # Testing dataset and its iterator
 db_test = db.DAVIS2016(train=False, db_root_dir=db_root_dir, transform=tr.ToTensor(), seq_name=seq_name)
@@ -135,7 +136,7 @@ for epoch in range(0, nEpochs):
         running_loss_tr += loss.item()  # PyTorch 0.4.0 style
 
         # Print stuff
-        if epoch % (nEpochs//20) == (nEpochs//20 - 1):
+        if (epoch % (nEpochs//20) == (nEpochs//20 - 1)) and (ii == 0):
             running_loss_tr /= num_img_tr
             loss_tr.append(running_loss_tr)
 
@@ -145,7 +146,8 @@ for epoch in range(0, nEpochs):
 
         # Backward the averaged gradient
         loss /= nAveGrad
-        loss.backward()
+        # TODO: learn why it doesn't work without retain_graph=True
+        loss.backward(retain_graph=True)
         aveGrad += 1
 
         # Update the weights once in nAveGrad forward passes

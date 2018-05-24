@@ -17,7 +17,8 @@ class DAVIS2016(Dataset):
                  db_root_dir='/media/eec/external/Databases/Segmentation/DAVIS-2016',
                  transform=None,
                  meanval=(104.00699, 116.66877, 122.67892),
-                 seq_name=None):
+                 seq_name=None,
+                 num_imgs=1):
         """Loads image to label pairs for tool pose estimation
         db_root_dir: dataset directory with subfolders "JPEGImages" and "Annotations"
         """
@@ -27,6 +28,7 @@ class DAVIS2016(Dataset):
         self.transform = transform
         self.meanval = meanval
         self.seq_name = seq_name
+        self.num_imgs = num_imgs
 
         if self.train:
             fname = 'train'
@@ -56,12 +58,13 @@ class DAVIS2016(Dataset):
             names_img = np.sort(os.listdir(os.path.join(db_root_dir, 'JPEGImages/480p/', str(seq_name))))
             img_list = list(map(lambda x: os.path.join('JPEGImages/480p/', str(seq_name), x), names_img))
             name_label = np.sort(os.listdir(os.path.join(db_root_dir, 'Annotations/480p/', str(seq_name))))
-            labels = [os.path.join('Annotations/480p/', str(seq_name), name_label[0])]
-            labels.extend([None]*(len(names_img)-1))
+            
+            labels = [os.path.join('Annotations/480p/', str(seq_name), name_label[i]) for i in range(len(name_label))]
             if self.train:
-                img_list = [img_list[0]]
-                labels = [labels[0]]
-
+            	img_list = img_list[:self.num_imgs]
+            	labels = labels[:self.num_imgs]	
+            
+            
         assert (len(labels) == len(img_list))
 
         self.img_list = img_list
