@@ -7,6 +7,7 @@ from scipy.misc import imresize
 
 from dataloaders.helpers import *
 from torch.utils.data import Dataset
+import torch
 
 
 class DAVIS2016(Dataset):
@@ -27,6 +28,7 @@ class DAVIS2016(Dataset):
         self.transform = transform
         self.meanval = meanval
         self.seq_name = seq_name
+        self.data_cache = {}
 
         if self.train:
             fname = 'train_seqs'
@@ -70,16 +72,9 @@ class DAVIS2016(Dataset):
         return len(self.img_list)
 
     def __getitem__(self, idx):
-        img, gt = self.make_img_gt_pair(idx)
+        sample = self.make_img_gt_pair(idx)
 
-        sample = {'image': img, 'gt': gt}
 
-        if self.seq_name is not None:
-            fname = os.path.join(self.seq_name, "%05d" % idx)
-            sample['fname'] = fname
-
-        if self.transform is not None:
-            sample = self.transform(sample)
 
         return sample
 
@@ -87,6 +82,10 @@ class DAVIS2016(Dataset):
         """
         Make the image-ground-truth pair
         """
+
+        if idx in self.data_cache:
+            return self.data_cache[idx]
+
         img = cv2.imread(os.path.join(self.db_root_dir, self.img_list[idx]))
         if self.labels[idx] is not None:
             label = cv2.imread(os.path.join(self.db_root_dir, self.labels[idx]), 0)
@@ -102,10 +101,23 @@ class DAVIS2016(Dataset):
         img = np.subtract(img, np.array(self.meanval, dtype=np.float32))
 
         if self.labels[idx] is not None:
-                gt = np.array(label, dtype=np.float32)
-                gt = gt/np.max([gt.max(), 1e-8])
+            gt = np.array(label, dtype=np.float32)
+            gt = gt / np.max([gt.max(), 1e-8])
 
-        return img, gt
+        sample = {'image': img, 'gt': gt}
+
+        if self.seq_name is not None:
+            fname = os.path.join(self.seq_name, "%05d" % idx)
+            sample['fname'] = fname
+
+        if self.transform is not None:
+            sample = self.transform(sample)
+
+        sample['image'] = torch.tensor(sample['image']).cuda()
+        sample['gt'] = torch.tensor(sample['gt']).cuda()
+
+        self.data_cache[idx] = sample
+        return sample
 
     def get_img_size(self):
         img = cv2.imread(os.path.join(self.db_root_dir, self.img_list[0]))
