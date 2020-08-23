@@ -94,12 +94,11 @@ composed_transforms = transforms.Compose([tr.RandomHorizontalFlip(),
                                           tr.ToTensor()])
 # Training dataset and its iterator
 db_train = db.DAVIS2016(train=True, db_root_dir=db_root_dir, transform=composed_transforms, seq_name=seq_name)
-trainloader = DataLoader(db_train, batch_size=p['trainBatch'], shuffle=True, num_workers=1)
+trainloader = DataLoader(db_train, batch_size=p['trainBatch'], shuffle=True)
 
 # Testing dataset and its iterator
 db_test = db.DAVIS2016(train=False, db_root_dir=db_root_dir, transform=tr.ToTensor(), seq_name=seq_name)
-testloader = DataLoader(db_test, batch_size=1, shuffle=False, num_workers=1)
-
+testloader = DataLoader(db_test, batch_size=1, shuffle=False)
 
 num_img_tr = len(trainloader)
 num_img_ts = len(testloader)
@@ -119,7 +118,7 @@ for epoch in range(0, nEpochs):
 
         # Forward-Backward of the mini-batch
         inputs.requires_grad_()
-        inputs, gts = inputs.to(device), gts.to(device)
+        # inputs, gts = inputs.to(device), gts.to(device)
 
         outputs = net.forward(inputs)
 
